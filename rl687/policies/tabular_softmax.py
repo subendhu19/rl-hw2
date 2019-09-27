@@ -1,6 +1,8 @@
 import numpy as np
 from .skeleton import Policy
 from typing import Union
+from scipy.special import softmax
+
 
 class TabularSoftmax(Policy):
     """
@@ -15,12 +17,11 @@ class TabularSoftmax(Policy):
 
     def __init__(self, numStates:int, numActions: int):
         
-        #The internal policy parameters must be stored as a matrix of size
-        #(numStates x numActions)
-        self._theta = np.zeros((numStates, numActions))
-        
-        #TODO
-        pass
+        # The internal policy parameters must be stored as a matrix of size
+        # (numStates x numActions)
+        self._theta = np.random.normal(size=(numStates, numActions))
+        self.num_states = numStates
+        self.num_actions = numActions
 
     @property
     def parameters(self)->np.ndarray:
@@ -31,29 +32,30 @@ class TabularSoftmax(Policy):
         return self._theta.flatten()
     
     @parameters.setter
-    def parameters(self, p:np.ndarray):
+    def parameters(self, p: np.ndarray):
         """
         Update the policy parameters. Input is a 1D numpy array of size |S|x|A|.
         """
         self._theta = p.reshape(self._theta.shape)
 
-    def __call__(self, state:int, action=None)->Union[float, np.ndarray]:
+    def __call__(self, state: int, action=None)->Union[float, np.ndarray]:
         
-        #TODO
-        pass
+        if action:
+            return self._theta[state][action]
+        else:
+            return self._theta[state]
 
-    def samplAction(self, state:int)->int:
+    def samplAction(self, state: int)->int:
         """
         Samples an action to take given the state provided. 
         
         output:
             action -- the sampled action
         """
-        
-        #TODO
-        pass
+        action_probs = self.getActionProbabilities(state)
+        return np.random.choice(np.arange(self.num_actions), p=action_probs)
 
-    def getActionProbabilities(self, state:int)->np.ndarray:
+    def getActionProbabilities(self, state: int)->np.ndarray:
         """
         Compute the softmax action probabilities for the state provided. 
         
@@ -64,5 +66,6 @@ class TabularSoftmax(Policy):
                             the state provided.
         """
 
-        #TODO
-        pass
+        action_logits = self._theta[state]
+        action_probs = softmax(action_logits)
+        return action_probs
