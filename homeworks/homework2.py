@@ -230,6 +230,31 @@ def problem6(config, iterations: int=25):
     return np.array(all_returns)
 
 
+def run_config(params):
+
+    def get_config_string(c):
+        ret_str = ''
+        for item in c:
+            ret_str += ('_' + str(item))
+        return ret_str
+
+    config = params[2]
+    trial_returns = []
+    for trial in range(50):
+        trial_returns.append(params[0](config))
+    trial_returns = np.array(trial_returns)
+
+    means = trial_returns.mean(axis=0)
+    errors = np.sqrt(trial_returns.var(axis=0))
+
+    fig = plt.figure()
+    plt.errorbar(range(len(means)), means, yerr=errors)
+    plt.xlabel('Episode Count')
+    plt.ylabel('Total reward')
+    plt.savefig('plots/problem' + str(params[1]) + get_config_string(config) + '.png')
+    plt.close(fig)
+
+
 def main():
 
     sigma = [1, 2.5, 5]
@@ -254,32 +279,10 @@ def main():
     configs[6] = [(b, p, e, ep, a, f) for p in popSize for e in numElite for ep in numEpisodes for a in alpha
                   for f in parent_frac for b in basis]
 
-    def get_config_string(c):
-        ret_str = ''
-        for item in c:
-            ret_str += ('_' + str(item))
-        return ret_str
-
-    def run_experiment(problem, num_trials=50, problem_id=1):
-
-        def run_config(config):
-            trial_returns = []
-            for trial in range(num_trials):
-                trial_returns.append(problem(config))
-            trial_returns = np.array(trial_returns)
-
-            means = trial_returns.mean(axis=0)
-            errors = np.sqrt(trial_returns.var(axis=0))
-
-            fig = plt.figure()
-            plt.errorbar(range(len(means)), means, yerr=errors)
-            plt.xlabel('Episode Count')
-            plt.ylabel('Total reward')
-            plt.savefig('plots/problem' + str(problem_id) + get_config_string(config) + '.png')
-            plt.close(fig)
-
+    def run_experiment(problem, num_trials=50, problem_id=0):
+        params = [[problem, num_trials, c] for c in configs[problem_id]]
         pool = Pool(50)
-        pool.map(run_config, configs[problem_id])
+        pool.map(run_config, params)
 
     print('Running experiment 1...')
     run_experiment(problem1, 50, 1)
