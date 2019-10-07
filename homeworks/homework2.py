@@ -275,10 +275,10 @@ def main():
             plt.errorbar(range(len(means)), means, yerr=errors)
             plt.xlabel('Episode Count')
             plt.ylabel('Total reward')
-            plt.savefig('problem' + str(problem_id) + get_config_string(config) + '.png')
+            plt.savefig('plots/problem' + str(problem_id) + get_config_string(config) + '.png')
             plt.close(fig)
 
-        pool = Pool(60)
+        pool = Pool(50)
         pool.map(run_config, configs[problem_id])
 
     print('Running experiment 1...')
