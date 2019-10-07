@@ -2,7 +2,6 @@ import numpy as np
 from .bbo_agent import BBOAgent
 
 from typing import Callable
-from tqdm import trange
 
 
 class CEM(BBOAgent):
@@ -32,11 +31,11 @@ class CEM(BBOAgent):
     """
 
     def __init__(self, theta: np.ndarray, sigma: float, popSize: int, numElite: int, numEpisodes: int,
-                 evaluationFunction: Callable, epsilon: float=0.0001):
-        self.initial_params = [theta, sigma * np.eye(theta.shape[0])]
-        self._name = 'CEM'
+                 evaluationFunction: Callable, epsilon: float=1.5):
+        self.initial_params = [theta, sigma * np.eye(len(theta))]
+        self._name = 'Cross_Entropy_Method'
         self._theta = theta
-        self._sigma = sigma * np.eye(theta.shape[0])
+        self._Sigma = sigma * np.eye(len(theta))
         self._pop_size = popSize
         self._num_elite = numElite
         self._num_episodes = numEpisodes
@@ -52,30 +51,23 @@ class CEM(BBOAgent):
         return self._theta
 
     def train(self)->np.ndarray:
-        lifetime_iterations = 200
+        samples = []
+        for k in range(self._pop_size):
+            theta_sample = np.random.multivariate_normal(self._theta, self._Sigma)
+            j = self._evaluation_function(theta_sample, self._num_episodes)
+            samples.append((theta_sample, j))
+        samples.sort(key=lambda x: x[1], reverse=True)
+        elite_samples = np.array([sample[0] for sample in samples[:self._num_elite]])
+        elite_mean = elite_samples.mean(axis=0)
+        elite_cov = (np.einsum('ij,ki->ijk',
+                               (elite_samples - elite_mean), (elite_samples - elite_mean).T).sum(axis=0) +
+                     self._epsilon * np.eye(len(self._theta))) / (self._epsilon + self._num_elite)
 
-        print('Training the {} agent...'.format(self.name))
-        bar = trange(lifetime_iterations)
-        for i in bar:
-            samples = []
-            for k in range(self._pop_size):
-                theta_sample = np.random.multivariate_normal(self._theta, self._sigma)
-                j = self._evaluation_function(theta_sample, self._num_episodes)
-                samples.append((theta_sample, j))
-            samples.sort(key=lambda x: x[1], reverse=True)
-            elite_samples = np.array([sample[0] for sample in samples[:self._num_elite]])
-            elite_mean = elite_samples.mean(axis=0)
-            elite_cov = (np.einsum('ij,ki->ijk',
-                                   (elite_samples - elite_mean), (elite_samples - elite_mean).T).sum(axis=0) +
-                         self._epsilon * np.eye(self._theta.shape[0])) / (self._epsilon + self._num_elite)
-
-            self._theta = elite_mean
-            bar.set_description("Average return: {}".format(self._evaluation_function(self._theta, self._num_episodes)))
-            self._sigma = elite_cov
-        print('Finished training')
+        self._theta = elite_mean
+        self._Sigma = elite_cov
 
         return self._theta
 
     def reset(self)->None:
         self._theta = self.initial_params[0]
-        self._sigma = self.initial_params[1]
+        self._Sigma = self.initial_params[1]

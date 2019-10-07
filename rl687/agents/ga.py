@@ -2,7 +2,6 @@ import numpy as np
 from .bbo_agent import BBOAgent
 
 from typing import Callable
-from tqdm import trange
 
 
 class GA(BBOAgent):
@@ -21,20 +20,20 @@ class GA(BBOAgent):
                     to be copied (unmodified) to the next generation
     """
 
-    def __init__(self, populationSize:int, evaluationFunction:Callable, numElite:int=10, numEpisodes:int=25,
-                 num_params: int=100):
-        self._name = 'Genetic algorithm'
+    def __init__(self, populationSize:int, evaluationFunction:Callable, initPopulationFunction:Callable,
+                 numElite:int=1, numEpisodes:int=5, alpha=2.5, parent_frac: int=2):
+        self._name = 'Genetic_Algorithm'
         self._pop_size = populationSize
         self._num_elite = numElite
-        self._num_parents = 5
+        self._num_parents = populationSize // parent_frac
         self._num_episodes = numEpisodes
         self._evaluation_function = evaluationFunction
 
-        self._theta = np.random.normal(size=num_params)
-        self._num_params = num_params
-        self._num_generations = 300
+        self._init_function = initPopulationFunction
+        self._population = initPopulationFunction(populationSize)
+        self._pop_evals = None
         self._num_children = populationSize - numElite
-        self._alpha = 2.5
+        self._alpha = alpha
 
     @property
     def name(self) -> str:
@@ -42,7 +41,7 @@ class GA(BBOAgent):
 
     @property
     def parameters(self) -> np.ndarray:
-        return self._theta
+        return self._pop_evals[0][0]
 
     def _mutate(self, parent: np.ndarray)->np.ndarray:
         """
@@ -61,37 +60,35 @@ class GA(BBOAgent):
     def get_children(self, parents):
         children = []
         for i in range(self._num_children):
-            parent_id = np.random.choice(range(self._num_parents))
+            parent_id = np.random.choice(range(len(parents)))
             children.append(self._mutate(parents[parent_id]))
 
         return children
 
     def train(self)->np.ndarray:
-        initial_population = []
-        for i in range(self._pop_size):
-            initial_population.append(np.random.multivariate_normal(self._theta, np.eye(self._theta.shape[0])))
 
-        population = initial_population
-
-        print('Training the {} agent...'.format(self.name))
-        bar = trange(self._num_generations)
-        for generation in bar:
+        if self._pop_evals is None:
             samples = []
             for k in range(self._pop_size):
-                samples.append((population[k], self._evaluation_function(population[k], self._num_episodes)))
+                samples.append((self._population[k], self._evaluation_function(self._population[k], self._num_episodes)))
             samples.sort(key=lambda x: x[1], reverse=True)
+            self._pop_evals = samples
 
-            samples = [sample[0] for sample in samples]
+        else:
+            samples = [sample[0] for sample in self._pop_evals]
 
             parents = self.get_parents(self._num_parents, samples)
             nex_gen = samples[:self._num_elite] + self.get_children(parents)
-            population = nex_gen
-            self._theta = np.array(population).mean(axis=0)
-            bar.set_description("Average return: {}".format(self._evaluation_function(self._theta, self._num_episodes)))
+            self._population = np.array(nex_gen)
 
-        print('Finished training')
+            samples = []
+            for k in range(self._pop_size):
+                samples.append(
+                    (self._population[k], self._evaluation_function(self._population[k], self._num_episodes)))
+            samples.sort(key=lambda x: x[1], reverse=True)
+            self._pop_evals = samples
 
-        return self._theta
+        return self._pop_evals[0][0]
 
     def reset(self)->None:
-        self._theta = np.random.normal(size=self._num_params)
+        self._population = self._init_function(self._pop_size)

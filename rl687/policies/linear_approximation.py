@@ -21,16 +21,16 @@ class LinearApproximation(Policy):
 
     Parameters
     ----------
-    State vector size (int): dimenstions of the state vector
+    State vector size (int): dimensions of the state vector
     numActions (int): the number of actions the tabular softmax policy has
     """
 
-    def __init__(self, state_dim: int, numActions: int):
-        self._basis = 3
+    def __init__(self, state_dim: int, num_actions: int, basis: int):
+        self._basis = basis
         self._state_dim = state_dim
-        self._num_actions = numActions
+        self._num_actions = num_actions
         self._feature_dim = (self._basis + 1) ** self._state_dim
-        self._theta = np.random.normal(size=(numActions, self._feature_dim))
+        self._theta = np.zeros(shape=(num_actions, self._feature_dim))
 
     @property
     def parameters(self) -> np.ndarray:
@@ -50,9 +50,20 @@ class LinearApproximation(Policy):
         action_probs = self.getActionProbabilities(state)
         return np.random.choice(np.arange(self._num_actions), p=action_probs)
 
+    def normalize(self, state: np.ndarray) -> np.ndarray:
+        norm_x = (3 + state[0]) / 6
+        norm_theta = (math.pi/12 + state[2]) / (math.pi/6)
+
+        norm_v = (300 + state[1]) / 600
+        norm_dtheta = (27 + state[3]) / 54
+
+        return np.array([norm_x, norm_v, norm_theta, norm_dtheta])
+
     def getFourierTransform(self, state: np.ndarray) -> np.ndarray:
+        normalized_state = self.normalize(state)
+
         cv = [number_to_base(i, self._basis + 1, self._state_dim) for i in range(self._feature_dim)]
-        return np.array([math.cos(i * math.pi * (np.dot(state, cv[i]))) for i in range(self._feature_dim)])
+        return np.array([math.cos(math.pi * (np.dot(normalized_state, cv[i]))) for i in range(self._feature_dim)])
 
     def getActionProbabilities(self, state: np.ndarray) -> np.ndarray:
         action_logits = np.dot(self._theta, self.getFourierTransform(state))

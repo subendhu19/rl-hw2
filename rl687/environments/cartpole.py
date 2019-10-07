@@ -20,7 +20,7 @@ class Cartpole(Environment):
 
     def __init__(self):
         self._name = "cartpole"
-        self._action = 0
+        self._action = None
         self._reward = 0
         self._isEnd = False
         self._gamma = 1
@@ -44,7 +44,7 @@ class Cartpole(Environment):
         self.action_set = {0: -1 * self.f_max, 1: self.f_max}
 
         # termination variables
-        self.fail_angle = math.pi / 2
+        self.fail_angle = math.pi / 12
         self.cart_boundary = 3
         self.time_limit = 20.0
 
@@ -91,20 +91,18 @@ class Cartpole(Environment):
         return new_state
 
     def R(self, state: np.ndarray, action: int, nextState: np.ndarray) -> float:
-        if not self.isEnd:
-            return 1
-        else:
-            return 0
+        return 1
 
     def step(self, action: int) -> Tuple[np.ndarray, float, bool]:
         """
         takes one step in the environment and returns the next state, reward, and if it is in the terminal state
         """
         old_state = self.state
+        self._action = action
         new_state = self.nextState(old_state, action)
 
         self._t += self._dt
-        [self._x, self._v, self._theta, self._dtheta] = new_state
+        self._x, self._v, self._theta, self._dtheta = new_state[0], new_state[1], new_state[2], new_state[3]
         self._isEnd = self.terminal()
 
         self._reward = self.R(old_state, action, new_state)
@@ -120,6 +118,7 @@ class Cartpole(Environment):
         self._theta = 0.
         self._dtheta = 0.
         self._t = 0.0
+        self._action = None
 
     def terminal(self) -> bool:
         """
@@ -129,7 +128,7 @@ class Cartpole(Environment):
             cart hits the sides |x| >= 3
         """
 
-        if abs(self.state[0]) > self.cart_boundary or abs(self.state[2]) > math.pi/12 or self._t > self.time_limit:
+        if abs(self.state[0]) >= self.cart_boundary or abs(self.state[2]) > math.pi/12 or self._t > self.time_limit:
             return True
 
         return False

@@ -19,7 +19,7 @@ class TabularSoftmax(Policy):
         
         # The internal policy parameters must be stored as a matrix of size
         # (numStates x numActions)
-        self._theta = np.random.normal(size=(numStates, numActions))
+        self._theta = np.zeros(shape=(numStates, numActions))
         self.num_states = numStates
         self.num_actions = numActions
 
@@ -40,10 +40,10 @@ class TabularSoftmax(Policy):
 
     def __call__(self, state: int, action=None)->Union[float, np.ndarray]:
         
-        if action:
-            return self._theta[state][action]
+        if action is not None:
+            return self.getActionProbabilities(state)[action]
         else:
-            return self._theta[state]
+            return self.getActionProbabilities(state)
 
     def samplAction(self, state: int)->int:
         """

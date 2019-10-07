@@ -2,7 +2,6 @@ import numpy as np
 from .bbo_agent import BBOAgent
 
 from typing import Callable
-from tqdm import trange
 
 
 class FCHC(BBOAgent):
@@ -21,13 +20,14 @@ class FCHC(BBOAgent):
         output: the estimated return of the policy 
     """
 
-    def __init__(self, theta: np.ndarray, sigma: float, evaluationFunction: Callable, numEpisodes: int=20):
-        self._name = 'First choice hill climbing'
+    def __init__(self, theta: np.ndarray, sigma: float, evaluationFunction: Callable, numEpisodes: int=5):
+        self._name = 'First_Choice_Hill_Climbing'
         self.initial_params = [theta, sigma]
         self._theta = theta
         self._sigma = sigma
         self._evaluation_function = evaluationFunction
         self._num_episodes = numEpisodes
+        self._prev_j = None
 
     @property
     def name(self) -> str:
@@ -38,19 +38,14 @@ class FCHC(BBOAgent):
         return self._theta
 
     def train(self) -> np.ndarray:
-        j = self._evaluation_function(self._theta, self._num_episodes)
-        lifetime_iterations = 200
+        if self._prev_j is None:
+            self._prev_j = self._evaluation_function(self._theta, self._num_episodes)
 
-        print('Training the {} agent...'.format(self.name))
-        bar = trange(lifetime_iterations)
-        for i in bar:
-            theta_sample = np.random.multivariate_normal(self._theta, (self._sigma ** 2) * np.eye(self._theta.shape[0]))
-            new_j = self._evaluation_function(theta_sample, self._num_episodes)
-            if new_j > j:
-                self._theta = theta_sample
-                j = new_j
-            bar.set_description("Average return: {}".format(self._evaluation_function(self._theta, self._num_episodes)))
-        print('Finished training')
+        theta_sample = np.random.multivariate_normal(self._theta, self._sigma * np.eye(len(self._theta)))
+        new_j = self._evaluation_function(theta_sample, self._num_episodes)
+        if new_j > self._prev_j:
+            self._theta = theta_sample
+            self._prev_j = new_j
 
         return self._theta
 
