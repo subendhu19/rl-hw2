@@ -238,9 +238,9 @@ def run_config(params):
             ret_str += ('_' + str(item))
         return ret_str
 
-    config = params[2]
+    config = params[3]
     trial_returns = []
-    for trial in range(50):
+    for trial in range(params[1]):
         trial_returns.append(params[0](config))
     trial_returns = np.array(trial_returns)
 
@@ -251,7 +251,7 @@ def run_config(params):
     plt.errorbar(range(len(means)), means, yerr=errors)
     plt.xlabel('Episode Count')
     plt.ylabel('Total reward')
-    plt.savefig('plots/problem' + str(params[1]) + get_config_string(config) + '.png')
+    plt.savefig('plots/problem' + str(params[2]) + get_config_string(config) + '.png')
     plt.close(fig)
 
 
@@ -280,7 +280,7 @@ def main():
                   for f in parent_frac for b in basis]
 
     def run_experiment(problem, num_trials=50, problem_id=0):
-        params = [[problem, num_trials, c] for c in configs[problem_id]]
+        params = [[problem, num_trials, problem_id, c] for c in configs[problem_id]]
         pool = Pool(50)
         pool.map(run_config, params)
 
